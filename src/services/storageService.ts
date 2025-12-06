@@ -41,8 +41,26 @@ export const StorageService = {
   login: (u: string, p: string) => { const found = StorageService.getRegisteredUsers().find(x => x.username.toLowerCase() === u.toLowerCase() && x.pin === p); if(found){const s={id:found.id,name:found.username,role:found.role}; StorageService.saveUserSession(s); return s;} return null; },
   logout: () => localStorage.removeItem(KEYS.SESS),
 
-  requestPasswordResetOtp: async (c: string) => { console.log(`%c SMS TO ${c}: [ ${Math.floor(100000+Math.random()*900000)} ]`, 'color:green'); return true; }, // Simplified for brevity
-  verifyPasswordResetOtp: (c: string, code: string) => true, // Demo simplified
+  requestPasswordResetOtp: async (c: string) => { 
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const reg = JSON.parse(localStorage.getItem(KEYS.OTP) || '{}');
+    reg[c] = { code: otp, expiresAt: Date.now() + 300000 };
+    localStorage.setItem(KEYS.OTP, JSON.stringify(reg));
+    await new Promise(r => setTimeout(r, 1000)); // Sim network
+    console.log(`%c 📨 SMS SENT TO ${c}: [ ${otp} ]`, 'background: #22c55e; color: white; padding: 4px; border-radius: 4px;'); 
+    return true; 
+  },
+  
+  verifyPasswordResetOtp: (c: string, code: string) => {
+    const reg = JSON.parse(localStorage.getItem(KEYS.OTP) || '{}');
+    const rec = reg[c];
+    if(rec && rec.code === code && Date.now() < rec.expiresAt) {
+      delete reg[c];
+      localStorage.setItem(KEYS.OTP, JSON.stringify(reg));
+      return true;
+    }
+    return false;
+  },
 
   resetData: () => { localStorage.clear(); location.reload(); },
   getLastSync: () => localStorage.getItem(KEYS.SYNC),
@@ -55,7 +73,6 @@ export const StorageService = {
     StorageService.getRegisteredUsers().forEach(u => batch.set(doc(db,"users",u.id), u, {merge:true}));
     await batch.commit();
 
-    // Pull Logs (Crucial Fix)
     const logsSnap = await getDocs(collection(db, "logs"));
     const remoteLogs: ConsumptionLog[] = [];
     logsSnap.forEach(d => remoteLogs.push(norm(d.data()) as ConsumptionLog));

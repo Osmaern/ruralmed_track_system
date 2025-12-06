@@ -2,11 +2,10 @@ import { GoogleGenAI, Type } from "@google/genai";
 import { InventoryItem, GeminiInsight } from '../types';
 
 const getAiClient = () => {
-  // Try Vite env var first, then fallback to standard process.env (for other setups)
-  const apiKey = import.meta.env?.VITE_API_KEY || (process as any).env?.API_KEY;
+  const apiKey = import.meta.env?.VITE_API_KEY;
   
   if (!apiKey) {
-    console.warn("Gemini API Key is missing. Please set VITE_API_KEY in your .env file.");
+    console.warn("Gemini API Key is missing. Please set VITE_API_KEY in your .env file or Netlify Dashboard.");
     return null;
   }
   return new GoogleGenAI({ apiKey });
@@ -17,8 +16,8 @@ export const GeminiService = {
     const ai = getAiClient();
     if (!ai) {
       return {
-        summary: "API Key missing. Please check your .env file.",
-        urgentActions: ["Configure VITE_API_KEY"],
+        summary: "Smart Assistant is offline. (Missing API Key)",
+        urgentActions: [],
         restockSuggestions: []
       };
     }
